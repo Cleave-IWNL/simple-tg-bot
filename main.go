@@ -9,9 +9,6 @@ import (
 func main() {
 	t := mustToken()
 
-	if err != nil {
-		//handle error
-	}
 	// token = flags.Get(token)
 
 	// tgClient = telegram.New(token)
