@@ -4,14 +4,15 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"my-simple-bot/clients/telegram"
+)
+
+const (
+	tgBotHost = "api.telegram.org"
 )
 
 func main() {
-	t := mustToken()
-
-	// token = flags.Get(token)
-
-	// tgClient = telegram.New(token)
+	tgClient := telegram.New(tgBotHost, mustToken())
 
 	// fetcher = fetcher.New()
 
