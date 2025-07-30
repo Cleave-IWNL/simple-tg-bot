@@ -21,8 +21,8 @@ const (
 	sendMessageMethod = "sendMessage"
 )
 
-func New(host string, token string) Client {
-	return Client{
+func New(host string, token string) *Client {
+	return &Client{
 		host:     host,
 		basePath: newBasePath(token),
 		client:   http.Client{},
@@ -34,7 +34,7 @@ func newBasePath(token string) string {
 }
 
 func (c *Client) Updates(offset int, limit int) ([]Update, error) {
-	q := url.Values()
+	q := url.Values{}
 	q.Add("offset", strconv.Itoa(offset))
 	q.Add("limit", strconv.Itoa(limit))
 
@@ -65,7 +65,7 @@ func (c *Client) SendMessage(chatID int, text string) error {
 }
 
 func (c *Client) doRequest(method string, query url.Values) (data []byte, err error) {
-	defer func() { err = e.WrapIfErr("Request unsuccesfull:", err) }()
+	defer func() { err = e.WrapIfErr("Request unsuccesfull: %s", err) }()
 	u := url.URL{
 		Scheme: "https",
 		Host:   c.host,
