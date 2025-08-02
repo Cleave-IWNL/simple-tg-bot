@@ -4,11 +4,13 @@ import (
 	"encoding/gob"
 	"errors"
 	"fmt"
-	"math/rand/v2"
-	"my-simple-bot/lib/e"
-	"my-simple-bot/storage"
+	"math/rand"
 	"os"
 	"path/filepath"
+	"time"
+
+	"my-simple-bot/lib/e"
+	"my-simple-bot/storage"
 )
 
 type Storage struct {
@@ -41,7 +43,6 @@ func (s Storage) Save(page *storage.Page) (err error) {
 	if err != nil {
 		return err
 	}
-
 	defer func() { _ = file.Close() }()
 
 	if err := gob.NewEncoder(file).Encode(page); err != nil {
@@ -52,9 +53,12 @@ func (s Storage) Save(page *storage.Page) (err error) {
 }
 
 func (s Storage) PickRandom(userName string) (page *storage.Page, err error) {
-	defer func() { err = e.WrapIfErr("can't save random page", err) }()
+	defer func() { err = e.WrapIfErr("can't pick random page", err) }()
 
 	path := filepath.Join(s.basePath, userName)
+
+	// 1. check user folder
+	// 2. create folder
 
 	files, err := os.ReadDir(path)
 	if err != nil {
@@ -65,7 +69,8 @@ func (s Storage) PickRandom(userName string) (page *storage.Page, err error) {
 		return nil, storage.ErrNoSavedPages
 	}
 
-	n := rand.IntN(len(files))
+	rand.Seed(time.Now().UnixNano())
+	n := rand.Intn(len(files))
 
 	file := files[n]
 
@@ -75,13 +80,14 @@ func (s Storage) PickRandom(userName string) (page *storage.Page, err error) {
 func (s Storage) Remove(p *storage.Page) error {
 	fileName, err := fileName(p)
 	if err != nil {
-		return e.Wrap("can't remove page", err)
+		return e.Wrap("can't remove file", err)
 	}
 
 	path := filepath.Join(s.basePath, p.UserName, fileName)
 
 	if err := os.Remove(path); err != nil {
-		msg := fmt.Sprintf("can't remove page %s", path)
+		msg := fmt.Sprintf("can't remove file %s", path)
+
 		return e.Wrap(msg, err)
 	}
 
@@ -113,7 +119,6 @@ func (s Storage) decodePage(filePath string) (*storage.Page, error) {
 	if err != nil {
 		return nil, e.Wrap("can't decode page", err)
 	}
-
 	defer func() { _ = f.Close() }()
 
 	var p storage.Page
@@ -121,6 +126,7 @@ func (s Storage) decodePage(filePath string) (*storage.Page, error) {
 	if err := gob.NewDecoder(f).Decode(&p); err != nil {
 		return nil, e.Wrap("can't decode page", err)
 	}
+
 	return &p, nil
 }
 

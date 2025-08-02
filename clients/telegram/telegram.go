@@ -3,11 +3,12 @@ package telegram
 import (
 	"encoding/json"
 	"io"
-	"my-simple-bot/lib/e"
 	"net/http"
 	"net/url"
 	"path"
 	"strconv"
+
+	"my-simple-bot/lib/e"
 )
 
 type Client struct {
@@ -33,7 +34,9 @@ func newBasePath(token string) string {
 	return "bot" + token
 }
 
-func (c *Client) Updates(offset int, limit int) ([]Update, error) {
+func (c *Client) Updates(offset int, limit int) (updates []Update, err error) {
+	defer func() { err = e.WrapIfErr("can't get updates", err) }()
+
 	q := url.Values{}
 	q.Add("offset", strconv.Itoa(offset))
 	q.Add("limit", strconv.Itoa(limit))
@@ -44,6 +47,7 @@ func (c *Client) Updates(offset int, limit int) ([]Update, error) {
 	}
 
 	var res UpdatesResponse
+
 	if err := json.Unmarshal(data, &res); err != nil {
 		return nil, err
 	}
@@ -58,14 +62,15 @@ func (c *Client) SendMessage(chatID int, text string) error {
 
 	_, err := c.doRequest(sendMessageMethod, q)
 	if err != nil {
-		return e.Wrap("can't read message", err)
+		return e.Wrap("can't send message", err)
 	}
 
 	return nil
 }
 
 func (c *Client) doRequest(method string, query url.Values) (data []byte, err error) {
-	defer func() { err = e.WrapIfErr("Request unsuccesfull: %s", err) }()
+	defer func() { err = e.WrapIfErr("can't do request", err) }()
+
 	u := url.URL{
 		Scheme: "https",
 		Host:   c.host,
@@ -73,7 +78,6 @@ func (c *Client) doRequest(method string, query url.Values) (data []byte, err er
 	}
 
 	req, err := http.NewRequest(http.MethodGet, u.String(), nil)
-
 	if err != nil {
 		return nil, err
 	}
@@ -81,15 +85,12 @@ func (c *Client) doRequest(method string, query url.Values) (data []byte, err er
 	req.URL.RawQuery = query.Encode()
 
 	resp, err := c.client.Do(req)
-
 	if err != nil {
 		return nil, err
 	}
-
 	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(resp.Body)
-
 	if err != nil {
 		return nil, err
 	}

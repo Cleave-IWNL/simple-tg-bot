@@ -2,6 +2,7 @@ package telegram
 
 import (
 	"errors"
+
 	"my-simple-bot/clients/telegram"
 	"my-simple-bot/events"
 	"my-simple-bot/lib/e"
@@ -14,15 +15,15 @@ type Processor struct {
 	storage storage.Storage
 }
 
-var (
-	ErrUnknownEvent    = errors.New("unknown event type")
-	ErrUnknownMetaType = errors.New("unknown meta type")
-)
-
 type Meta struct {
 	ChatID   int
 	Username string
 }
+
+var (
+	ErrUnknownEventType = errors.New("unknown event type")
+	ErrUnknownMetaType  = errors.New("unknown meta type")
+)
 
 func New(client *telegram.Client, storage storage.Storage) *Processor {
 	return &Processor{
@@ -57,7 +58,7 @@ func (p *Processor) Process(event events.Event) error {
 	case events.Message:
 		return p.processMessage(event)
 	default:
-		return e.Wrap("can't process message", ErrUnknownEvent)
+		return e.Wrap("can't process message", ErrUnknownEventType)
 	}
 }
 
@@ -83,34 +84,36 @@ func meta(event events.Event) (Meta, error) {
 	return res, nil
 }
 
-func event(u telegram.Update) events.Event {
-	updType := fetchType(u)
+func event(upd telegram.Update) events.Event {
+	updType := fetchType(upd)
 
 	res := events.Event{
 		Type: updType,
-		Text: fetchText(u),
+		Text: fetchText(upd),
 	}
 
 	if updType == events.Message {
 		res.Meta = Meta{
-			ChatID:   u.Message.Chat.ID,
-			Username: u.Message.From.Username,
+			ChatID:   upd.Message.Chat.ID,
+			Username: upd.Message.From.Username,
 		}
 	}
 
 	return res
 }
 
-func fetchType(u telegram.Update) events.Type {
-	if u.Message == nil {
-		return events.Unknown
-	}
-	return events.Message
-}
-
-func fetchText(u telegram.Update) string {
-	if u.Message == nil {
+func fetchText(upd telegram.Update) string {
+	if upd.Message == nil {
 		return ""
 	}
-	return u.Message.Text
+
+	return upd.Message.Text
+}
+
+func fetchType(upd telegram.Update) events.Type {
+	if upd.Message == nil {
+		return events.Unknown
+	}
+
+	return events.Message
 }

@@ -3,10 +3,11 @@ package telegram
 import (
 	"errors"
 	"log"
-	"my-simple-bot/lib/e"
-	"my-simple-bot/storage"
 	"net/url"
 	"strings"
+
+	"my-simple-bot/lib/e"
+	"my-simple-bot/storage"
 )
 
 const (
@@ -18,7 +19,7 @@ const (
 func (p *Processor) doCmd(text string, chatID int, username string) error {
 	text = strings.TrimSpace(text)
 
-	log.Printf("got new command '%s' from '%s'", text, username)
+	log.Printf("got new command '%s' from '%s", text, username)
 
 	if isAddCmd(text) {
 		return p.savePage(chatID, text, username)
@@ -26,7 +27,7 @@ func (p *Processor) doCmd(text string, chatID int, username string) error {
 
 	switch text {
 	case RndCmd:
-		return p.sendRandom(chatID, text)
+		return p.sendRandom(chatID, username)
 	case HelpCmd:
 		return p.sendHelp(chatID)
 	case StartCmd:
@@ -36,11 +37,11 @@ func (p *Processor) doCmd(text string, chatID int, username string) error {
 	}
 }
 
-func (p *Processor) savePage(chatID int, pageUrl string, username string) (err error) {
+func (p *Processor) savePage(chatID int, pageURL string, username string) (err error) {
 	defer func() { err = e.WrapIfErr("can't do command: save page", err) }()
 
 	page := &storage.Page{
-		URL:      pageUrl,
+		URL:      pageURL,
 		UserName: username,
 	}
 
@@ -48,7 +49,6 @@ func (p *Processor) savePage(chatID int, pageUrl string, username string) (err e
 	if err != nil {
 		return err
 	}
-
 	if isExists {
 		return p.tg.SendMessage(chatID, msgAlreadyExists)
 	}
@@ -68,8 +68,10 @@ func (p *Processor) sendRandom(chatID int, username string) (err error) {
 	defer func() { err = e.WrapIfErr("can't do command: can't send random", err) }()
 
 	page, err := p.storage.PickRandom(username)
-
 	if err != nil && !errors.Is(err, storage.ErrNoSavedPages) {
+		return err
+	}
+	if errors.Is(err, storage.ErrNoSavedPages) {
 		return p.tg.SendMessage(chatID, msgNoSavedPages)
 	}
 
@@ -80,19 +82,19 @@ func (p *Processor) sendRandom(chatID int, username string) (err error) {
 	return p.storage.Remove(page)
 }
 
-func (p *Processor) sendHelp(chatID int) (err error) {
+func (p *Processor) sendHelp(chatID int) error {
 	return p.tg.SendMessage(chatID, msgHelp)
 }
 
-func (p *Processor) sendHello(chatID int) (err error) {
+func (p *Processor) sendHello(chatID int) error {
 	return p.tg.SendMessage(chatID, msgHello)
 }
 
 func isAddCmd(text string) bool {
-	return isUrl(text)
+	return isURL(text)
 }
 
-func isUrl(text string) bool {
+func isURL(text string) bool {
 	u, err := url.Parse(text)
 
 	return err == nil && u.Host != ""
